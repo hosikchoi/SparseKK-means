@@ -1,0 +1,381 @@
+kernelMatrix = function(x, y, kernel = "gaussian", kparam = 1.0) {
+  
+  x = as.matrix(x)
+  y = as.matrix(y)
+  p = ncol(x)
+  
+  if (NCOL(x) == 0) {
+    x = matrix(0, nrow = nrow(x), ncol = 1)
+  }
+  
+  if (NCOL(y) == 0) {
+    y = matrix(0, nrow = nrow(y), ncol = 1)
+  }
+  
+  if (kernel == "poly") {
+    K = (x %*% t(y) + 1.0)^kparam
+  } else if(kernel == "gaussian" | kernel == "gaussian2") {
+    normx = rowSums(x^2)
+    normy = rowSums(y^2)
+    temp = x %*% t(y)
+    temp = (-2.0 * temp) + outer(normx, rep(1.0, nrow(y)), "*") + outer(rep(1.0, nrow(x)), normy, "*")
+    K = exp(-temp * kparam)
+    # K = kernlab:::kernelMatrix(rbfdot(sigma = kparam), x, y)
+  } else if (kernel == "spline") {
+    K = 0
+    for (d in 1:p) {
+      K_temp = spline_kernel(x[, d, drop = FALSE], y[, d, drop = FALSE])
+      K = K + K_temp$K1 + K_temp$K2
+    }
+  } else if (kernel == "linear") {
+    K = tcrossprod(x, y)
+  } else if (kernel == "anova_gaussian") {
+    K = 0
+    for (d in 1:p) {
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      K_temp = kernelMatrix(A, B, kernel = "gaussian", kparam = kparam)
+      K = K + K_temp
+    }
+  } else {
+    K = NULL
+  }
+  return(K)
+}
+
+make_anovaKernel = function(x, y, kernel, kparam)
+{
+  x = as.matrix(x)
+  y = as.matrix(y)
+  dimx = ncol(x)
+  
+  # calculate anova kernels for main effects
+  if (kernel == "spline") {
+    # assign the number of anova kernels
+    numK = 2 * dimx
+    # list of kernel matrices
+    anova_kernel = vector(mode = "list", numK)
+    # list of kernel coordinate indices
+    kernelCoord = vector(mode = "list", numK)
+    index = 0
+    
+    for (d in 1:dimx) {
+      index = index + 1
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      K_temp = spline_kernel(A, B)
+      anova_kernel[[index]] = K_temp$K1
+      kernelCoord[[index]] = paste("x", d, " linear", sep="")
+      index = index + 1
+      anova_kernel[[index]] = K_temp$K2
+      kernelCoord[[index]] = paste("x", d, " smooth", sep="")
+    }
+    
+  } else if (kernel == 'spline2') {
+    numK = (2 * dimx) + (2 * dimx * (2 * dimx - 1) / 2 - dimx)
+    anova_kernel = vector(mode = "list", numK)
+    kernelCoord = vector(mode = "list", numK)
+    index = 0
+    # main effects
+    for (d in 1:dimx) {
+      index = index + 1
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      K_temp = spline_kernel(A, B)
+      anova_kernel[[index]] = K_temp$K1
+      kernelCoord[[index]] = paste("x", d, " linear", sep = "")
+      index = index + 1
+      anova_kernel[[index]] = K_temp$K2
+      kernelCoord[[index]] = paste("x", d, " smooth", sep = "")
+    }
+    # two-way interactions
+    for (i in 1:(dimx - 1)) {
+      for (j in (i + 1):dimx) {
+        index = index + 1
+        A_linear = as.matrix(anova_kernel[[2 * i - 1]])
+        A_smooth = as.matrix(anova_kernel[[2 * i]])
+        B_linear = as.matrix(anova_kernel[[2 * j - 1]])
+        B_smooth = as.matrix(anova_kernel[[2 * j]])
+        anova_kernel[[index]] = A_linear * B_linear
+        kernelCoord[[index]] = paste("x", i, " linear,", " x", j, " linear", sep = "")
+        index = index + 1
+        anova_kernel[[index]] = A_linear * B_smooth
+        kernelCoord[[index]] = paste("x", i, " linear,", " x", j, " smooth", sep = "")
+        index = index + 1
+        anova_kernel[[index]] = A_smooth * B_linear
+        kernelCoord[[index]] = paste("x", i, " smooth,", " x", j, " linear", sep = "")
+        index = index + 1
+        anova_kernel[[index]] = A_smooth * B_smooth
+        kernelCoord[[index]] = paste("x", i, " smooth,", " x", j, " smooth", sep = "")
+      }
+    }
+  } else if (kernel == "spline-t") {
+    numK = dimx
+    anova_kernel = vector(mode = "list", numK)
+    kernelCoord = vector(mode = "list", numK)
+    index = 0
+    for (d in 1:dimx) {
+      index = index + 1
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      K_temp = spline_kernel(A, B)
+      anova_kernel[[index]] = (K_temp$K1 + K_temp$K2)
+      kernelCoord[[index]] = paste("x", d, sep = "")
+    }
+  } else if (kernel == 'spline-t2') {
+    numK = dimx + dimx * (dimx - 1) / 2
+    anova_kernel = vector(mode = "list", numK)
+    kernelCoord = vector(mode = "list", numK)
+    index = 0
+    
+    for (d in 1:dimx) {
+      index = index + 1
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      K_temp = spline_kernel(A, B)
+      anova_kernel[[index]] = (K_temp$K1 + K_temp$K2)
+      kernelCoord[[index]] = paste("x", d, sep = "")
+    }
+    
+    for (i in 1:(dimx - 1)) {
+      for (j in (i + 1):dimx) {
+        index = index + 1
+        A = anova_kernel[[i]]
+        B = anova_kernel[[j]]
+        anova_kernel[[index]] = A * B
+        kernelCoord[[index]] = paste("x", i, " x", j, sep = "")
+      }
+    }
+  } else if (kernel == "gaussian2") {
+    numK = dimx + dimx * (dimx - 1) / 2
+    anova_kernel = vector(mode = "list", numK)
+    kernelCoord = vector(mode = "list", numK)
+    index = 0
+    
+    for (d in 1:dimx) {
+      index = index + 1
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      anova_kernel[[index]] = kernelMatrix(A, B, kernel, kparam)
+      kernelCoord[[index]] = paste("x", d, sep = "")
+    }
+    
+    for (i in 1:(dimx - 1)) {
+      for (j in (i + 1):dimx) {
+        index = index + 1
+        A = anova_kernel[[i]]
+        B = anova_kernel[[j]]
+        anova_kernel[[index]] = A * B
+        kernelCoord[[index]] = paste("x", i, " x", j, sep = "")
+      }
+    }
+  } else {
+    numK = dimx
+    anova_kernel = vector(mode = "list", numK)
+    kernelCoord = vector(mode = "list", numK)
+    for (d in 1:dimx) {
+      A = x[, d, drop = FALSE]
+      B = y[, d, drop = FALSE]
+      anova_kernel[[d]] = kernelMatrix(A, B, kernel, kparam)
+      kernelCoord[[d]] = paste("x", d, sep = "")
+    }
+  }
+  return(list(K = anova_kernel, coord = kernelCoord, numK = numK, kernel = kernel, kparam = kparam))
+}
+
+spline_kernel = function(x, u)
+{
+  x <- as.matrix(x)
+  u <- as.matrix(u)
+  K1x <- (x - 1/2)
+  K1u <- (u - 1/2)
+  K2x <- (K1x^2 - 1/12)/2
+  K2u <- (K1u^2 - 1/12)/2
+  ax <- x%x%matrix(1, 1, nrow(u))
+  au <- u%x%matrix(1, 1, nrow(x))
+  b <- abs(ax - t(au))
+  K1 <- K1x%x%t(K1u)
+  K2 <- K2x%x%t(K2u) - ((b - 1/2)^4 - (b - 1/2)^2/2 + 7/240)/24
+  list(K1 = K1, K2 = K2)
+}
+
+combine_kernel = function(anovaKernel, 
+                          theta = rep(1 / sqrt(anovaKernel$numK),
+                                      anovaKernel$numK))
+{
+  K = 0
+  for (d in 1:length(theta)) {
+    K = (K + theta[d] * anovaKernel$K[[d]])
+  }
+  return(K)
+}
+
+# make_a_vec = function(anovaKernel, clusters) {
+#   uc = sort(unique(clusters))
+#   d = anovaKernel$numK
+#   n = length(clusters)
+#   K1 = 2 * n * sapply(anovaKernel$K, function(x) sum(diag(x)))
+#   K2 = 2 * sapply(anovaKernel$K, sum)
+#   
+#   K3 = K4 = numeric(d)
+#   for (j in 1:d) {
+#     r_part = lapply(uc, function(i) {
+#       gind = clusters == i
+#       temp_K = anovaKernel$K[[j]][gind, gind]
+#       temp_K3 = sum(gind) * sum(diag(temp_K))
+#       temp_K4 = sum(temp_K)
+#       return(list(temp_K3, temp_K4))
+#     })
+#     K3[j] = sum(sapply(r_part, "[[", 1))
+#     K4[j] = sum(sapply(r_part, "[[", 2))
+#   }
+#   return(K1 - K2 - K3 + K4)
+# }
+
+
+GetWCD = function(anovaKernel, theta, clusters)
+{
+  uc = unique(clusters)
+  td = wcd = numeric(length(theta))
+  for (v in 1:length(theta)) {
+    K = anovaKernel$K[[v]]
+    td[v] = sum(K)
+    
+    for (g in 1:length(uc)) {
+      ind = clusters == uc[g]
+      subK = K[ind, ind]
+      wcd[v] = wcd[v] + sum(diag(subK)) - (1 / sum(ind)) * sum(subK)
+    }
+  }
+  return(wcd = wcd)
+}
+
+# pairwise_K = function(anovaKernel, theta)
+# {
+#   D = combine_kernel(anovaKernel, theta = theta)
+#   return(D)
+# }
+
+# WC_K = function(anovaKernel, theta, clusters)
+# {
+#   D = lapply(unique(clusters), 
+#          function(i) {
+#            subset_K_c = list()
+#            subset_K_c$K = lapply(anovaKernel$K, function(x) x[, clusters == i, drop = FALSE]) 
+#            K_c = combine_kernel(subset_K_c, theta)
+#          })
+#   return(D)
+# }
+
+
+
+
+updateCs = function(anovaKernel, theta, clusters, maxiter = 100) {
+  
+  # Initialization
+  clusters0 = clusters
+  
+  for (i in 1:maxiter) {
+    uc = unique(clusters0)
+    RKHS_dist = sapply(uc, function(g) {
+      
+      gind = clusters == g
+      ng = sum(gind)
+      
+      Kxx = diag(combine_kernel(anovaKernel, theta = theta))
+      
+      Kxy = list()
+      Kxy$K = lapply(anovaKernel$K, function(x) x[, gind, drop = FALSE]) 
+      Kxy = rowSums(combine_kernel(Kxy, theta))
+      
+      Kyy = list()
+      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE]) 
+      Kyy = sum(combine_kernel(Kyy, theta))
+      
+      return(Kxx - (2 * Kxy / ng) + (Kyy / ng^2))
+      # return(list(Kxx, Kxy, Kyy))
+    })
+    clusters = uc[apply(RKHS_dist, 1, which.min)]
+    if (sum(clusters != clusters0) == 0) {
+      break
+    } else {
+      clusters0 = clusters
+    }
+  }
+  return(list(clusters = clusters, iteration = i))
+}
+
+
+# RKHS_dist2 = function(x, theta, g, kernel, kparam) {
+#   new_x = x
+#   G = unique(g)
+#   split_X = lapply(G, function(i) x[g == i, , drop = FALSE])
+#   g_index_temp = sapply(split_X, function(x) {
+#     n = nrow(x)
+#     anova_tmp = make_anovaKernel(new_x, new_x, kernel = kernel, kparam = kparam)
+#     anova_K = combine_kernel(anova_tmp, theta = theta)
+#     
+#     anova_temp2 = make_anovaKernel(new_x, x, kernel = kernel, kparam = kparam)
+#     anova_temp3 = make_anovaKernel(x, x, kernel = kernel, kparam = kparam)
+#     
+#     K1 = diag(anova_K)
+#     K2 = 2 * rowSums(combine_kernel(anova_temp2, theta)) / n
+#     # K2 = rowSums(combine_kernel(anova_temp2, theta))
+#     
+#     K3 = sum(combine_kernel(anova_temp3, theta)) / n^2
+#     # K3 = sum(combine_kernel(anova_temp3, theta))
+#     return(K1 + K3 - K2)
+#     # return(list(K1, K2, K3))
+#   })
+#   return(g_index_temp)
+# }
+
+
+soft_threshold = function(x, delta) {
+  w = sign(x) * pmax(abs(x) - delta, 0)
+  return(w)
+}
+
+normalization = function(x) {
+  x / sqrt(sum(x^2))
+}
+
+# the function from sparcl package
+BinarySearch = function(coefs, s) 
+{
+  if(sum(coefs^2) == 0 || sum(abs(normalization(coefs))) <= s) return(0)
+  lamb1 = 0
+  lamb2 = max(abs(coefs)) - 1e-5
+  iter = 0
+  while ((iter <= 15) & ((lamb2 - lamb1) > 1e-4)) {
+    iter = iter + 1
+    w_tmp = soft_threshold(coefs, (lamb1 + lamb2) / 2)
+    w = normalization(w_tmp)
+    if (sum(abs(w)) < s) {
+      lamb2 = (lamb1 + lamb2) / 2
+    } else {
+      lamb1 = (lamb1 + lamb2) / 2
+    }
+  }
+  return((lamb1 + lamb2) / 2)
+}
+
+# BinarySearch <- function(argu,sumabs){
+#   if(l2n(argu)==0 || sum(abs(argu/l2n(argu)))<=sumabs) return(0)
+#   lam1 <- 0
+#   lam2 <- max(abs(argu))-1e-5
+#   iter <- 1
+#   while(iter<=15 && (lam2-lam1)>(1e-4)){
+#     su <- soft(argu,(lam1+lam2)/2)
+#     if(sum(abs(su/l2n(su)))<sumabs){
+#       lam2 <- (lam1+lam2)/2
+#     } else {
+#       lam1 <- (lam1+lam2)/2
+#     }
+#     iter <- iter+1
+#   }
+#   return((lam1+lam2)/2)
+# }
+
+
+
