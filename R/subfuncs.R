@@ -14,7 +14,7 @@ kernelMatrix = function(x, y, kernel = "gaussian", kparam = 1.0) {
   
   if (kernel == "poly") {
     K = (x %*% t(y) + 1.0)^kparam
-  } else if(kernel == "gaussian" | kernel == "gaussian2") {
+  } else if(kernel == "gaussian" | kernel == "gaussian-2way") {
     normx = rowSums(x^2)
     normy = rowSums(y^2)
     temp = x %*% t(y)
@@ -146,7 +146,7 @@ make_anovaKernel = function(x, y, kernel, kparam)
         kernelCoord[[index]] = paste("x", i, " x", j, sep = "")
       }
     }
-  } else if (kernel == "gaussian2") {
+  } else if (kernel == "gaussian-2way") {
     numK = dimx + dimx * (dimx - 1) / 2
     anova_kernel = vector(mode = "list", numK)
     kernelCoord = vector(mode = "list", numK)
@@ -185,18 +185,18 @@ make_anovaKernel = function(x, y, kernel, kparam)
 
 spline_kernel = function(x, u)
 {
-  x <- as.matrix(x)
-  u <- as.matrix(u)
-  K1x <- (x - 1/2)
-  K1u <- (u - 1/2)
-  K2x <- (K1x^2 - 1/12)/2
-  K2u <- (K1u^2 - 1/12)/2
-  ax <- x%x%matrix(1, 1, nrow(u))
-  au <- u%x%matrix(1, 1, nrow(x))
-  b <- abs(ax - t(au))
-  K1 <- K1x%x%t(K1u)
-  K2 <- K2x%x%t(K2u) - ((b - 1/2)^4 - (b - 1/2)^2/2 + 7/240)/24
-  list(K1 = K1, K2 = K2)
+  x = as.matrix(x)
+  u = as.matrix(u)
+  K1x = (x - 1/2)
+  K1u = (u - 1/2)
+  K2x = (K1x^2 - 1/12)/2
+  K2u = (K1u^2 - 1/12)/2
+  ax = x %x% matrix(1, 1, nrow(u))
+  au = u %x% matrix(1, 1, nrow(x))
+  b = abs(ax - t(au))
+  K1 = K1x %x% t(K1u)
+  K2 = K2x %x% t(K2u) - ((b - 1/2)^4 - (b - 1/2)^2/2 + 7/240)/24
+  return(list(K1 = K1, K2 = K2))
 }
 
 combine_kernel = function(anovaKernel, 
