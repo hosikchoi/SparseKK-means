@@ -1,4 +1,4 @@
-skkm = function(x, n_cluster, nStart = 10, s = 1.5,
+skkm = function(x, nCluster, nStart = 10, s = 1.5,
                kernel = c("linear", "gaussian", "spline-t",
                           "gaussian-2way", "spline-t-2way"),
                kparam = 1, opt = TRUE, ...) 
@@ -13,11 +13,11 @@ skkm = function(x, n_cluster, nStart = 10, s = 1.5,
   
   res = vector("list", length = nStart)
   
-  seeds = seq(1:nStart, by = 1)
+  seeds = seq(1, nStart, by = 1)
   for (j in 1:length(seeds)) {
     # initialization
     set.seed(seeds[j])
-    clusters0 = sample(1:n_cluster, size = n, replace = TRUE)
+    clusters0 = sample(1:nCluster, size = n, replace = TRUE)
     res[[j]] = skkm_core(x = x, clusters0 = clusters0, theta0 = NULL, s = s,
                          kernel = kernel, kparam = kparam, ...)
   }
@@ -29,6 +29,7 @@ skkm = function(x, n_cluster, nStart = 10, s = 1.5,
     opt_ind = which(bcd_list == max(bcd_list))
     if (length(opt_ind) > 1) {
       warning("")
+      opt_ind = opt_ind[1]
     }
     
     out$opt_clusters = res[[opt_ind]]$clusters
@@ -47,6 +48,7 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5,
   d = ncol(x)
   
   # initialization
+  init_clusters = clusters0
   anovaKernel = make_anovaKernel(x, x, kernel, kparam)
   if (is.null(theta0)) {
     theta0 = rep(1 / sqrt(anovaKernel$numK), anovaKernel$numK)
@@ -71,13 +73,14 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5,
     theta = normalization(theta_tmp)
     
     # print((sum(abs(theta - theta0)) / sum(theta0)))
+    bcd_vec[i] = sum(theta * (td - GetWCD(anovaKernel, theta = theta, clusters = clusters)))
+    
     if ((sum(abs(theta - theta0)) / sum(theta0)) < eps) {
       break
     } else {
       theta0 = theta
       clusters0 = clusters
     }
-    bcd_vec[i] = sum(theta * (td - GetWCD(anovaKernel, theta = theta, clusters = clusters)))
   }
   return(list(clusters = clusters, theta = theta, iteration = i, bcd = bcd_vec, init_clusters = init_clusters))
 }
