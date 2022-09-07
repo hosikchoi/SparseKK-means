@@ -1,4 +1,4 @@
-skkm = function(x, nCluster, nStart = 10, s = 1.5,
+skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
                kernel = c("linear", "gaussian", "spline-t",
                           "gaussian-2way", "spline-t-2way"),
                kparam = 1, opt = TRUE, ...) 
@@ -11,14 +11,18 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5,
   n = nrow(x)
   d = ncol(x)
   
+  if (is.null(weights)) {
+    weights = rep(1, n)
+  }
+  
   res = vector("list", length = nStart)
   
   seeds = seq(1, nStart, by = 1)
   for (j in 1:length(seeds)) {
     # initialization
-    set.seed(seeds[j])
+    # set.seed(seeds[j])
     clusters0 = sample(1:nCluster, size = n, replace = TRUE)
-    res[[j]] = skkm_core(x = x, clusters0 = clusters0, theta0 = NULL, s = s,
+    res[[j]] = skkm_core(x = x, clusters0 = clusters0, theta0 = NULL, s = s, weights = weights,
                          kernel = kernel, kparam = kparam, ...)
   }
   if (opt) {
@@ -40,25 +44,35 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5,
   return(out)
 }
 
-skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5,
+skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL,
                kernel = "linear", kparam = 1, maxiter = 100, eps = 1e-5) 
 {
   call = match.call()
   n = nrow(x)
   d = ncol(x)
   
+  if (is.null(weights)) {
+    weights = rep(1, n)
+  }
+  
   # initialization
   init_clusters = clusters0
-  anovaKernel = make_anovaKernel(x, x, kernel, kparam)
+  anovaKernel = make_anovaKernel(x = x, y = x, kernel = kernel, kparam = kparam)
+  
   if (is.null(theta0)) {
     theta0 = rep(1 / sqrt(anovaKernel$numK), anovaKernel$numK)
   }
+  
   bcd_vec = c()
   
   for (i in 1:maxiter) {
     
     # Update clusters
-    clusters = updateCs(anovaKernel = anovaKernel, theta = theta0, clusters = clusters0)$clusters
+    # clusters = kkk(combine_kernel(anovaKernel, theta = theta0), 2)
+    # clusters0 = sample(1:nCluster, size = n, replace = TRUE)
+    clusters = updateCs(anovaKernel = anovaKernel, theta = theta0, 
+                        clusters = clusters0, weights = weights)$clusters
+    # plot(dat$x[, 1:2], col = clusters)
     # RKHS_d2 = RKHS_dist2(x, theta = theta0, g = clusters0, kernel = kernel, kparam = kparam)
     # clusters = apply(RKHS_d, MARGIN = 1, which.min)
     

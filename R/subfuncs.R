@@ -187,15 +187,15 @@ spline_kernel = function(x, u)
 {
   x = as.matrix(x)
   u = as.matrix(u)
-  K1x = (x - 1/2)
-  K1u = (u - 1/2)
-  K2x = (K1x^2 - 1/12)/2
-  K2u = (K1u^2 - 1/12)/2
+  K1x = (x - 1 / 2)
+  K1u = (u - 1 / 2)
+  K2x = (K1x^2 - 1 / 12) / 2
+  K2u = (K1u^2 - 1 / 12) / 2
   ax = x %x% matrix(1, 1, nrow(u))
   au = u %x% matrix(1, 1, nrow(x))
   b = abs(ax - t(au))
   K1 = K1x %x% t(K1u)
-  K2 = K2x %x% t(K2u) - ((b - 1/2)^4 - (b - 1/2)^2/2 + 7/240)/24
+  K2 = K2x %x% t(K2u) - ((b - 1 / 2)^4 - (b - 1 / 2)^2 / 2 + 7 / 240) / 24
   return(list(K1 = K1, K2 = K2))
 }
 
@@ -232,7 +232,7 @@ combine_kernel = function(anovaKernel,
 #   return(K1 - K2 - K3 + K4)
 # }
 
-
+# weights 반영한 코드로 변경해야함
 GetWCD = function(anovaKernel, theta, clusters)
 {
   uc = unique(clusters)
@@ -270,7 +270,7 @@ GetWCD = function(anovaKernel, theta, clusters)
 
 
 
-updateCs = function(anovaKernel, theta, clusters, maxiter = 100) {
+updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
   
   # Initialization
   clusters0 = clusters
@@ -279,20 +279,20 @@ updateCs = function(anovaKernel, theta, clusters, maxiter = 100) {
     uc = unique(clusters0)
     RKHS_dist = sapply(uc, function(g) {
       
-      gind = clusters == g
-      ng = sum(gind)
+      gind = clusters0 == g
+      wng = sum(weights[gind])
       
       Kxx = diag(combine_kernel(anovaKernel, theta = theta))
       
       Kxy = list()
-      Kxy$K = lapply(anovaKernel$K, function(x) x[, gind, drop = FALSE]) 
-      Kxy = rowSums(combine_kernel(Kxy, theta))
+      Kxy$K = lapply(anovaKernel$K, function(x) x[gind, , drop = FALSE] * weights[gind]) 
+      Kxy = colSums(combine_kernel(Kxy, theta))
       
       Kyy = list()
-      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE]) 
+      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE] * weights[gind]) 
       Kyy = sum(combine_kernel(Kyy, theta))
       
-      return(Kxx - (2 * Kxy / ng) + (Kyy / ng^2))
+      return(Kxx - (2 * Kxy / wng) + (Kyy / wng^2))
       # return(list(Kxx, Kxy, Kyy))
     })
     clusters = uc[apply(RKHS_dist, 1, which.min)]
