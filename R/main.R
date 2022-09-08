@@ -13,6 +13,7 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
   
   if (is.null(weights)) {
     weights = rep(1, n)
+    attr(weights, "type") = "auto"
   }
   
   res = vector("list", length = nStart)
@@ -71,10 +72,12 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     # clusters = kkk(combine_kernel(anovaKernel, theta = theta0), 2)
     # clusters0 = sample(1:nCluster, size = n, replace = TRUE)
     
-    # if (all(weights == "N")) {
+    if (attr(weights, "type") == "auto") {
+      weights0 = weights
       NbyC = table(clusters0)
       weights = 1 / as.numeric(NbyC[clusters0])
-    # }
+      attr(weights, "type") = attr(weights0, "type")
+    }
     
     clusters = updateCs(anovaKernel = anovaKernel, theta = theta0, 
                         clusters = clusters0, weights = weights)$clusters

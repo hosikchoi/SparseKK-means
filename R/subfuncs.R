@@ -251,25 +251,6 @@ GetWCD = function(anovaKernel, theta, clusters, weights)
   # return(list(td = td, wcd = wcd))
 }
 
-# pairwise_K = function(anovaKernel, theta)
-# {
-#   D = combine_kernel(anovaKernel, theta = theta)
-#   return(D)
-# }
-
-# WC_K = function(anovaKernel, theta, clusters)
-# {
-#   D = lapply(unique(clusters), 
-#          function(i) {
-#            subset_K_c = list()
-#            subset_K_c$K = lapply(anovaKernel$K, function(x) x[, clusters == i, drop = FALSE]) 
-#            K_c = combine_kernel(subset_K_c, theta)
-#          })
-#   return(D)
-# }
-
-
-
 
 updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
   
@@ -280,17 +261,17 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
     uc = unique(clusters0)
     RKHS_dist = sapply(uc, function(g) {
       
-      gind = clusters0 == g
-      swt = weights[gind]
+      ind = clusters0 == g
+      swt = weights[ind]
       
       Kxx = diag(combine_kernel(anovaKernel, theta = theta))
       
       Kxy = list()
-      Kxy$K = lapply(anovaKernel$K, function(x) x[gind, , drop = FALSE] * swt) 
+      Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt) 
       Kxy = colSums(combine_kernel(Kxy, theta))
       
       Kyy = list()
-      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE] * tcrossprod(swt)) 
+      Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt)) 
       Kyy = sum(combine_kernel(Kyy, theta))
       
       return(Kxx - (2 * Kxy / sum(swt)) + (Kyy / sum(swt)^2))
