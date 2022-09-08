@@ -77,8 +77,8 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     # clusters = apply(RKHS_d, MARGIN = 1, which.min)
     
     # Update theta
-    wcd = GetWCD(anovaKernel, theta = theta0, clusters)
-    td = GetWCD(anovaKernel, theta = theta0, rep(1, length(clusters)))
+    wcd = GetWCD(anovaKernel, theta = theta0, clusters = clusters, weights = weights)
+    td = GetWCD(anovaKernel, theta = theta0, rep(1, length(clusters)), weights = weights)
     bcd = td - wcd
     
     delta = BinarySearch(coefs = bcd, s = s)
@@ -87,7 +87,7 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     theta = normalization(theta_tmp)
     
     # print((sum(abs(theta - theta0)) / sum(theta0)))
-    bcd_vec[i] = sum(theta * (td - GetWCD(anovaKernel, theta = theta, clusters = clusters)))
+    bcd_vec[i] = sum(theta * (td - GetWCD(anovaKernel, theta = theta, clusters = clusters, weights = weights)))
     
     if ((sum(abs(theta - theta0)) / sum(theta0)) < eps) {
       break

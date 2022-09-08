@@ -233,21 +233,22 @@ combine_kernel = function(anovaKernel,
 # }
 
 # weights 반영한 코드로 변경해야함
-GetWCD = function(anovaKernel, theta, clusters)
+GetWCD = function(anovaKernel, theta, clusters, weights)
 {
   uc = unique(clusters)
-  td = wcd = numeric(length(theta))
+  wcd = numeric(length(theta))
   for (v in 1:length(theta)) {
     K = anovaKernel$K[[v]]
-    td[v] = sum(K)
     
     for (g in 1:length(uc)) {
       ind = clusters == uc[g]
+      swt = weights[ind]
       subK = K[ind, ind]
-      wcd[v] = wcd[v] + sum(diag(subK)) - (1 / sum(ind)) * sum(subK)
+      wcd[v] = wcd[v] + sum(swt * diag(subK)) - (1 / sum(swt)) * sum((subK * tcrossprod(swt)))
     }
   }
-  return(wcd = wcd)
+  return(wcd)
+  # return(list(td = td, wcd = wcd))
 }
 
 # pairwise_K = function(anovaKernel, theta)
@@ -280,19 +281,19 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
     RKHS_dist = sapply(uc, function(g) {
       
       gind = clusters0 == g
-      wng = sum(weights[gind])
+      swt = weights[gind]
       
       Kxx = diag(combine_kernel(anovaKernel, theta = theta))
       
       Kxy = list()
-      Kxy$K = lapply(anovaKernel$K, function(x) x[gind, , drop = FALSE] * weights[gind]) 
+      Kxy$K = lapply(anovaKernel$K, function(x) x[gind, , drop = FALSE] * swt) 
       Kxy = colSums(combine_kernel(Kxy, theta))
       
       Kyy = list()
-      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE] * weights[gind]) 
+      Kyy$K = lapply(anovaKernel$K, function(x) x[gind, gind, drop = FALSE] * tcrossprod(swt)) 
       Kyy = sum(combine_kernel(Kyy, theta))
       
-      return(Kxx - (2 * Kxy / wng) + (Kyy / wng^2))
+      return(Kxx - (2 * Kxy / sum(swt)) + (Kyy / sum(swt)^2))
       # return(list(Kxx, Kxy, Kyy))
     })
     clusters = uc[apply(RKHS_dist, 1, which.min)]
