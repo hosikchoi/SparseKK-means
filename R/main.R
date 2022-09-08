@@ -63,15 +63,22 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     theta0 = rep(1 / sqrt(anovaKernel$numK), anovaKernel$numK)
   }
   
-  bcd_vec = c()
+  td_vec = wcd_vec = bcd_vec = c()
   
   for (i in 1:maxiter) {
     
     # Update clusters
     # clusters = kkk(combine_kernel(anovaKernel, theta = theta0), 2)
     # clusters0 = sample(1:nCluster, size = n, replace = TRUE)
+    
+    # if (all(weights == "N")) {
+      NbyC = table(clusters0)
+      weights = 1 / as.numeric(NbyC[clusters0])
+    # }
+    
     clusters = updateCs(anovaKernel = anovaKernel, theta = theta0, 
                         clusters = clusters0, weights = weights)$clusters
+    
     # plot(dat$x[, 1:2], col = clusters)
     # RKHS_d2 = RKHS_dist2(x, theta = theta0, g = clusters0, kernel = kernel, kparam = kparam)
     # clusters = apply(RKHS_d, MARGIN = 1, which.min)
@@ -86,9 +93,14 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     theta_tmp = soft_threshold(bcd, delta = delta)
     theta = normalization(theta_tmp)
     
-    # print((sum(abs(theta - theta0)) / sum(theta0)))
-    bcd_vec[i] = sum(theta * (td - GetWCD(anovaKernel, theta = theta, clusters = clusters, weights = weights)))
+    td_new = GetWCD(anovaKernel, theta = theta, rep(1, length(clusters)), weights = weights)
+    wcd_new = GetWCD(anovaKernel, theta = theta, clusters = clusters, weights = weights)
     
+    td_vec[i] = sum(theta * td_new)
+    wcd_vec[i] = sum(theta * wcd_new)
+    bcd_vec[i] = sum(theta * (td_new - wcd_new))
+    
+    # print((sum(abs(theta - theta0)) / sum(theta0)))
     if ((sum(abs(theta - theta0)) / sum(theta0)) < eps) {
       break
     } else {
@@ -96,5 +108,6 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
       clusters0 = clusters
     }
   }
-  return(list(clusters = clusters, theta = theta, iteration = i, bcd = bcd_vec, init_clusters = init_clusters))
+  return(list(clusters = clusters, theta = theta, weights = weights, 
+              iteration = i, td = td_vec, wcd = wcd_vec, bcd = bcd_vec, init_clusters = init_clusters))
 }

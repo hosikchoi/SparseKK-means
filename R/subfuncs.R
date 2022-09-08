@@ -204,8 +204,8 @@ combine_kernel = function(anovaKernel,
                                       anovaKernel$numK))
 {
   K = 0
-  for (d in 1:length(theta)) {
-    K = (K + theta[d] * anovaKernel$K[[d]])
+  for (v in 1:length(theta)) {
+    K = (K + theta[v] * anovaKernel$K[[v]])
   }
   return(K)
 }
