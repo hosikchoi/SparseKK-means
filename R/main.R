@@ -1,11 +1,72 @@
-skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
-               kernel = c("linear", "gaussian", "spline-t",
-                          "gaussian-2way", "spline-t-2way"),
-               kparam = 1, opt = TRUE, ...) 
+tune.skkm = function(x, nCluster, nPerms = 20, s = NULL, ns = 100, nStart = 10, weights = NULL, 
+                     kernel = "linear", kparam = 1, opt = TRUE, ...)
 {
   out = list()
   call = match.call()
-  kernel = match.arg(kernel)
+  kernel = match.arg(kernel, c("linear", "gaussian", "spline-t",
+                               "gaussian-2way", "spline-t-2way"))
+  
+  if (!is.matrix(x)) {
+    x = as.matrix(x)
+  }
+  
+  p = ncol(x)
+  
+  if (is.null(s)) {
+    if (kernel %in% c("gaussian-2way", "spline-t-2way")) {
+      nv = p + p * (p - 1) / 2
+    } else {
+      nv = p
+    }
+    s = exp(seq(log(1), log(sqrt(nv)), length.out = ns))
+  }
+  
+  perm_list = vector("list", nPerms)
+  for (i in 1:nPerms) {
+    perm_list[[i]] = sapply(1:p, function(j) sample(x[, j]))
+  }
+    
+  org_bcd = numeric(ns)
+  for (j in 1:ns) {
+    org_fit = skkm(x, nCluster = nCluster, nStart = nStart, s = s[j], weights = weights,
+                   kernel = kernel, kparam = kparam, opt = TRUE, ...)
+    org_bcd[j] = org_fit$max_bcd
+  }
+    
+  perm_bcd_list = matrix(0, nrow = nPerms, ncol = ns)
+  for (b in 1:nPerms) {
+    perm_bcd = numeric(ns)
+    for (j in 1:ns) {
+      perm_fit = skkm(x = perm_list[[b]], nCluster = nCluster, nStart = nStart, s = s[j], weights = weights,
+                      kernel = kernel, kparam = kparam, opt = TRUE, ...)
+      perm_bcd[j] = perm_fit$max_bcd
+    }
+    perm_bcd_list[b, ] = perm_bcd
+  }
+    
+  out$org_bcd = org_bcd
+  out$perm_bcd = perm_bcd_list
+  out$gaps = log(org_bcd) - colMeans(log(perm_bcd_list))
+  out$opt_ind = which.max(out$gaps)
+  out$opt_s = s[out$opt_ind]
+    
+  if (opt) {
+    opt_fit = skkm(x = x, nCluster = nCluster, nStart = nStart, s = out$opt_s, weights = weights,
+                  kernel = kernel, kparam = kparam, opt = TRUE, ...)  
+    out$optModel = opt_fit
+  }
+  
+  out$call = call
+  return(out)
+}
+
+skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
+               kernel = "linear", kparam = 1, opt = TRUE, ...) 
+{
+  out = list()
+  call = match.call()
+  kernel = match.arg(kernel, c("linear", "gaussian", "spline-t",
+                               "gaussian-2way", "spline-t-2way"))
   
   x = as.matrix(x)
   n = nrow(x)
