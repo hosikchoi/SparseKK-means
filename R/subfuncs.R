@@ -264,15 +264,19 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
       ind = clusters0 == g
       swt = weights[ind]
       
-      Kxx = diag(combine_kernel(anovaKernel, theta = theta))
+      K = combine_kernel(anovaKernel, theta = theta)
       
-      Kxy = list()
-      Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt) 
-      Kxy = colSums(combine_kernel(Kxy, theta))
+      Kxx = diag(K)
       
-      Kyy = list()
-      Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt)) 
-      Kyy = sum(combine_kernel(Kyy, theta))
+      # Kxy = list()
+      # Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt) 
+      # Kxy = colSums(combine_kernel(Kxy, theta))
+      Kxy = colSums(K[ind, , drop = FALSE] * swt)
+      
+      # Kyy = list()
+      # Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt)) 
+      # Kyy = sum(combine_kernel(Kyy, theta))
+      Kyy = sum(K[ind, ind] * tcrossprod(swt))
       
       return(Kxx - (2 * Kxy / sum(swt)) + (Kyy / sum(swt)^2))
       # return(list(Kxx, Kxy, Kyy))

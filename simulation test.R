@@ -1,6 +1,7 @@
 rm(list = ls())
 gc()
-setwd(r"(C:\Users\user\Dropbox\MyFolder\Topics\Sparse Kernel clustering\R code)")
+# setwd(r"(C:\Users\user\Dropbox\MyFolder\Topics\Sparse Kernel clustering\R code)")
+setwd(r"(C:\Users\Beom\GitHub\SparseKK-means)")
 
 generateMultiorange = function(n, p = 2, seed = 1, with_noise = TRUE, noise_p = 1)
 {
@@ -102,23 +103,30 @@ generateTwoMoon = function(each_n = 100, sigma = 1, noise_p = 4, noise_sd = 3, s
 require(sparcl)
 require(kernlab)
 require(caret)
-source(r"(C:\Users\User\GitHub\SparseKK-means\R\subfuncs.R)")
-source(r"(C:\Users\User\GitHub\SparseKK-means\R\main.R)")
+source(r"(.\R\subfuncs.R)")
+source(r"(.\R\main.R)")
 
 
 n = 200
 p = 2
 # dat = generateMultiorange(n = n, p = p, seed = 2, with_noise = TRUE, noise_p = 5)
-dat = generateTwoorange(n = n, p = p, seed = 2, with_noise = TRUE, noise_p = 5)
+dat = generateTwoorange(n = n, p = p, seed = 2, with_noise = TRUE, noise_p = 0)
 # dat = generateMultiMoon(each_n = n, sigma = 0.5, seed = 1, noise_p = 5, noise_sd = 3)
 # dat = generateTwoMoon(each_n = n, sigma = 0.5, seed = 1, noise_p = 5, noise_sd = 3)
 
-sigma = kernlab::sigest(dat$x, scale = FALSE)[3]
-sigma = 1
+# sigma = kernlab::sigest(scale(dat$x), scale = FALSE)[3]
+sigma = 2
 
 # Sparse kernel k-means algorithm
-tuned_res = tune.skkm(x = dat$x, nCluster = 2, s = NULL, ns = 10, nPerms = 20,
-                      nStart = 1, kernel = "gaussian-2way", kparam = sigma, opt = TRUE)
+# tuned_res = tune.skkm(x = dat$x, nCluster = 2, s = NULL, ns = 10, nPerms = 20,
+#                       nStart = 1, kernel = "gaussian-2way", kparam = sigma, opt = TRUE)
+
+tuned_res = skkm(x = scale(dat$x), nCluster = 2, s = 3, 
+                      nStart = 30, kernel = "gaussian", kparam = sigma, opt = TRUE)
+tuned_res$opt_theta
+tuned_res$max_bcd
+plot(dat$x[, 1:2], col = tuned_res$opt_clusters, pch = 16, cex = 1.5, xlab = "x1", ylab = "y1", main = "Proposed method")
+
 
 # tuned_res$opt_s
 # tuned_res$optModel$opt_clusters
