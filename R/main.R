@@ -133,12 +133,12 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     # clusters = kkk(combine_kernel(anovaKernel, theta = theta0), 2)
     # clusters0 = sample(1:nCluster, size = n, replace = TRUE)
     
-    if (attr(weights, "type") == "auto") {
-      weights0 = weights
-      NbyC = table(clusters0)
-      weights = 1 / as.numeric(NbyC[clusters0])
-      attr(weights, "type") = attr(weights0, "type")
-    }
+    # if (attr(weights, "type") == "auto") {
+    #   weights0 = weights
+    #   NbyC = table(clusters0)
+    #   weights = 1 / as.numeric(NbyC[clusters0])
+    #   attr(weights, "type") = attr(weights0, "type")
+    # }
     
     clusters = updateCs(anovaKernel = anovaKernel, theta = theta0, 
                         clusters = clusters0, weights = weights)$clusters
