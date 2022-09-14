@@ -115,17 +115,36 @@ dat = generateTwoorange(n = n, p = p, seed = 2, with_noise = TRUE, noise_p = 0)
 # dat = generateTwoMoon(each_n = n, sigma = 0.5, seed = 1, noise_p = 5, noise_sd = 3)
 
 # sigma = kernlab::sigest(scale(dat$x), scale = FALSE)[3]
-sigma = 2
+sigma = 0.8
 
 # Sparse kernel k-means algorithm
-# tuned_res = tune.skkm(x = dat$x, nCluster = 2, s = NULL, ns = 10, nPerms = 20,
-#                       nStart = 1, kernel = "gaussian-2way", kparam = sigma, opt = TRUE)
+tuned_res = tune.skkm(x = dat$x, nCluster = 2, s = NULL, ns = 10, nPerms = 20,
+                      nStart = 1, kernel = "gaussian-2way", kparam = sigma, opt = TRUE)
+tuned_res$optModel$opt_theta
 
-tuned_res = skkm(x = scale(dat$x), nCluster = 2, s = 3, 
-                      nStart = 30, kernel = "gaussian", kparam = sigma, opt = TRUE)
+tuned_res = skkm(x = dat$x, nCluster = 2, s = 3, 
+                nStart = 1, kernel = "gaussian-2way", kparam = sigma, 
+                 opt = TRUE, eps = 1e-9)
 tuned_res$opt_theta
-tuned_res$max_bcd
+# tuned_res$max_bcd
+# tuned_res$res[[1]]$td
+tuned_res$res[[1]]$wcd
+
+aa = make_anovaKernel(dat$x, dat$x, kernel = "gaussian-2way", kparam = sigma)
+# theta = rep(1 / sqrt(3), 3)
+theta = tuned_res$opt_theta
+K = combine_kernel(aa, theta)
+res = kkmeans2(K, centers = 2)
+# res@.Data
+# GetWCD(aa, theta, res@.Data, weights = rep(1, nrow(dat$x)))
+sum(theta * GetWCD(aa, theta = theta, clusters = res@.Data, weights = rep(1, nrow(dat$x))))
+
+# a = sapply(lapply(tuned_res$res, "[[", "bcd"), max)
+# which(a == max(a))
+# tuned_res$res[[29]]$theta
 plot(dat$x[, 1:2], col = tuned_res$opt_clusters, pch = 16, cex = 1.5, xlab = "x1", ylab = "y1", main = "Proposed method")
+plot(dat$x[, 1:2], col = res@.Data, pch = 16, cex = 1.5, xlab = "x1", ylab = "y1", main = "Proposed method")
+plot(dat$x[, 1:2], col = tuned_res$optModel$opt_clusters, pch = 16, cex = 1.5, xlab = "x1", ylab = "y1", main = "Proposed method")
 
 
 # tuned_res$opt_s
@@ -134,8 +153,9 @@ plot(dat$x[, 1:2], col = tuned_res$opt_clusters, pch = 16, cex = 1.5, xlab = "x1
 
 # Sparse k-means algorithm
 tuned_scl = KMeansSparseCluster.permute(x = dat$x, K = 2)
-opt_scl = KMeansSparseCluster(x = dat$x, K = 2, nstart = 1, wbounds = tuned_scl$bestw)
-
+# opt_scl = KMeansSparseCluster(x = dat$x, K = 2, nstart = 1, wbounds = tuned_scl$bestw)
+opt_scl = KMeansSparseCluster(x = dat$x, K = 2, nstart = 1, wbounds = 2.5)
+opt_scl[[1]]$crit
 # Kernel k-means algorithm
 kkm_res = kkmeans(dat$x, centers = 2, kernel = "rbfdot", kpar = list(sigma = sigma))
 

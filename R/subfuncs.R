@@ -269,12 +269,12 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
       Kxx = diag(K)
       
       # Kxy = list()
-      # Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt) 
+      # Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt)
       # Kxy = colSums(combine_kernel(Kxy, theta))
       Kxy = colSums(K[ind, , drop = FALSE] * swt)
       
       # Kyy = list()
-      # Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt)) 
+      # Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt))
       # Kyy = sum(combine_kernel(Kyy, theta))
       Kyy = sum(K[ind, ind] * tcrossprod(swt))
       

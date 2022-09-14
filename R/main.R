@@ -84,6 +84,12 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
     # initialization
     # set.seed(seeds[j])
     clusters0 = sample(1:nCluster, size = n, replace = TRUE)
+    # aa = make_anovaKernel(x, x, kernel = kernel, kparam = sigma)
+    # theta = rep(1 / sqrt(3), 3)
+    # K = combine_kernel(aa, theta)
+    # fit = kkmeans2(K, centers = nCluster)
+    # clusters0 = fit@.Data
+    
     res[[j]] = skkm_core(x = x, clusters0 = clusters0, theta0 = NULL, s = s, weights = weights,
                          kernel = kernel, kparam = kparam, ...)
   }
