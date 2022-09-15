@@ -21,12 +21,6 @@ kernelMatrix = function(x, y, kernel = "gaussian", kparam = 1.0) {
     temp = (-2.0 * temp) + outer(normx, rep(1.0, nrow(y)), "*") + outer(rep(1.0, nrow(x)), normy, "*")
     K = exp(-temp * kparam)
     # K = kernlab:::kernelMatrix(rbfdot(sigma = kparam), x, y)
-  } else if (kernel == "spline") {
-    K = 0
-    for (d in 1:p) {
-      K_temp = spline_kernel(x[, d, drop = FALSE], y[, d, drop = FALSE])
-      K = K + K_temp$K1 + K_temp$K2
-    }
   } else if (kernel == "linear") {
     K = tcrossprod(x, y)
   } else if (kernel == "anova_gaussian") {
@@ -122,7 +116,7 @@ make_anovaKernel = function(x, y, kernel, kparam)
       anova_kernel[[index]] = (K_temp$K1 + K_temp$K2)
       kernelCoord[[index]] = paste("x", d, sep = "")
     }
-  } else if (kernel == 'spline-t2') {
+  } else if (kernel == 'spline-t-2way') {
     numK = dimx + dimx * (dimx - 1) / 2
     anova_kernel = vector(mode = "list", numK)
     kernelCoord = vector(mode = "list", numK)
