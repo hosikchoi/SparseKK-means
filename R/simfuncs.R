@@ -3,21 +3,26 @@ generateMultiorange = function(n, p = 2, seed = 1, with_noise = TRUE, noise_p = 
   set.seed(seed)
   X = matrix(nrow = n, ncol = p)
   y = numeric(n)
+  nclass = numeric(3)
+  each_n = floor(n / 3)
   k = 1
   while (k <= n) {
     x = rnorm(p, sd = 2)
     sx = sum(x^2)
-    if (sx <= 0.5) {
+    if (sx <= 0.5 & nclass[1] < each_n) {
+      nclass[1] = nclass[1] + 1
       y[k] = 1
       X[k, ] = x
       k = k + 1
     }
-    else if (2.0 < sx & sx <= 3) {
+    else if (2.0 < sx & sx <= 3 & nclass[2] < each_n) {
+      nclass[2] = nclass[2] + 1
       y[k] = 2
       X[k, ] = x
       k = k + 1
     }
-    else if (5 < sx & sx <= 7) {
+    else if (5 < sx & sx <= 7 & nclass[3] < each_n) {
+      nclass[3] = nclass[3] + 1
       y[k] = 3
       X[k, ] = x
       k = k + 1
@@ -35,15 +40,19 @@ generateTwoorange = function(n, p = 2, seed = 1, with_noise = TRUE, noise_p = 1)
   set.seed(seed)
   X = matrix(nrow = n, ncol = p)
   y = numeric(n)
+  nclass = numeric(2)
+  each_n = floor(n / 2)
   k = 1
   while (k <= n) {
     x = rnorm(p, sd = 2)
     sx = sum(x^2)
-    if (sx <= 0.5) {
+    if (sx <= 0.5 & nclass[1] < each_n) {
+      nclass[1] = nclass[1] + 1
       y[k] = 1
       X[k, ] = x
       k = k + 1
-    }else if (5 < sx & sx <= 7) {
+    }else if (5 < sx & sx <= 7 & nclass[2] < each_n) {
+      nclass[2] = nclass[2] + 1
       y[k] = 2
       X[k, ] = x
       k = k + 1

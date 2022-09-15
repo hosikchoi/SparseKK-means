@@ -19,6 +19,8 @@ tune.skkm = function(x, nCluster, nPerms = 20, s = NULL, ns = 100, nStart = 10, 
       nv = p
     }
     s = exp(seq(log(1), log(sqrt(nv)), length.out = ns))
+  } else {
+    s = sort(s)
   }
   
   perm_list = vector("list", nPerms)
@@ -47,7 +49,7 @@ tune.skkm = function(x, nCluster, nPerms = 20, s = NULL, ns = 100, nStart = 10, 
   out$org_bcd = org_bcd
   out$perm_bcd = perm_bcd_list
   out$gaps = log(org_bcd) - colMeans(log(perm_bcd_list))
-  out$opt_ind = which.max(out$gaps)
+  out$opt_ind = min(which(out$gaps == max(out$gaps)))
   out$opt_s = s[out$opt_ind]
     
   if (opt) {
@@ -70,11 +72,11 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
   
   x = as.matrix(x)
   n = nrow(x)
-  d = ncol(x)
+  # p = ncol(x)
   
   if (is.null(weights)) {
     weights = rep(1, n)
-    attr(weights, "type") = "auto"
+    # attr(weights, "type") = "auto"
   }
   
   res = vector("list", length = nStart)
@@ -95,7 +97,7 @@ skkm = function(x, nCluster, nStart = 10, s = 1.5, weights = NULL,
   }
   if (opt) {
     bcd_list = sapply(res, function(x) {
-      bcd = x$bcd[x$iteration]
+      bcd = max(x$bcd)
     })
     
     opt_ind = which(bcd_list == max(bcd_list))
@@ -117,7 +119,7 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
 {
   call = match.call()
   n = nrow(x)
-  d = ncol(x)
+  # p = ncol(x)
   
   if (is.null(weights)) {
     weights = rep(1, n)
@@ -154,8 +156,8 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     # clusters = apply(RKHS_d, MARGIN = 1, which.min)
     
     # Update theta
-    wcd = GetWCD(anovaKernel, theta = theta0, clusters = clusters, weights = weights)
-    td = GetWCD(anovaKernel, theta = theta0, rep(1, length(clusters)), weights = weights)
+    wcd = GetWCD(anovaKernel, clusters = clusters, weights = weights)
+    td = GetWCD(anovaKernel, rep(1, length(clusters)), weights = weights)
     bcd = td - wcd
     
     delta = BinarySearch(coefs = bcd, s = s)
@@ -163,12 +165,16 @@ skkm_core = function(x, clusters0 = NULL, theta0 = NULL, s = 1.5, weights = NULL
     theta_tmp = soft_threshold(bcd, delta = delta)
     theta = normalization(theta_tmp)
     
-    td_new = GetWCD(anovaKernel, theta = theta, rep(1, length(clusters)), weights = weights)
-    wcd_new = GetWCD(anovaKernel, theta = theta, clusters = clusters, weights = weights)
+    # td_new = GetWCD(anovaKernel, rep(1, length(clusters)), weights = weights)
+    # wcd_new = GetWCD(anovaKernel, clusters = clusters, weights = weights)
+    # sum(theta0 * td) - sum(theta * td)
+    # theta0 * td
+    # theta * td
+    # sum(theta0 * wcd) - sum(theta * wcd)
     
-    td_vec[i] = sum(theta * td_new)
-    wcd_vec[i] = sum(theta * wcd_new)
-    bcd_vec[i] = sum(theta * (td_new - wcd_new))
+    td_vec[i] = sum(theta * td)
+    wcd_vec[i] = sum(theta * wcd)
+    bcd_vec[i] = sum(theta * bcd)
     
     # print((sum(abs(theta - theta0)) / sum(theta0)))
     if ((sum(abs(theta - theta0)) / sum(theta0)) < eps) {

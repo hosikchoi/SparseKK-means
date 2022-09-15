@@ -226,11 +226,12 @@ combine_kernel = function(anovaKernel,
 #   return(K1 - K2 - K3 + K4)
 # }
 
-GetWCD = function(anovaKernel, theta, clusters, weights)
+GetWCD = function(anovaKernel, clusters, weights)
 {
   uc = unique(clusters)
-  wcd = numeric(length(theta))
-  for (v in 1:length(theta)) {
+  d = anovaKernel$numK
+  wcd = numeric(d)
+  for (v in 1:d) {
     K = anovaKernel$K[[v]]
     
     for (g in 1:length(uc)) {
@@ -266,13 +267,16 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
       # Kxy$K = lapply(anovaKernel$K, function(x) x[ind, , drop = FALSE] * swt)
       # Kxy = colSums(combine_kernel(Kxy, theta))
       Kxy = colSums(K[ind, , drop = FALSE] * swt)
+      # Kxy = (K[, ind, drop = FALSE] %*% swt) / sum(swt)
       
       # Kyy = list()
       # Kyy$K = lapply(anovaKernel$K, function(x) x[ind, ind, drop = FALSE] * tcrossprod(swt))
       # Kyy = sum(combine_kernel(Kyy, theta))
-      Kyy = sum(K[ind, ind] * tcrossprod(swt))
+      Kyy = sum(K[ind, ind, drop = FALSE] * tcrossprod(swt))
+      # Kyy = sum(drop(crossprod(K[ind, ind], swt)) * swt) / sum(swt)^2
       
       return(Kxx - (2 * Kxy / sum(swt)) + (Kyy / sum(swt)^2))
+      # return(Kxx - 2 * Kxy + Kyy)
       # return(list(Kxx, Kxy, Kyy))
     })
     clusters = uc[apply(RKHS_dist, 1, which.min)]
@@ -282,7 +286,7 @@ updateCs = function(anovaKernel, theta, clusters, weights, maxiter = 100) {
       clusters0 = clusters
     }
   }
-  return(list(clusters = clusters, iteration = i))
+  return(list(clusters = clusters, iteration = i, RKHS_dist = RKHS_dist))
 }
 
 
@@ -317,7 +321,7 @@ soft_threshold = function(x, delta) {
 }
 
 normalization = function(x) {
-  x / sqrt(sum(x^2))
+  return(x / sqrt(sum(x^2)))
 }
 
 # the function from sparcl package
@@ -325,9 +329,9 @@ BinarySearch = function(coefs, s)
 {
   if((sum(coefs^2) == 0) | (sum(abs(normalization(coefs))) <= s)) return(0)
   lamb1 = 0
-  lamb2 = max(abs(coefs)) - 1e-5
+  lamb2 = max(abs(coefs)) - 1e-6
   iter = 0
-  while ((iter <= 15) & ((lamb2 - lamb1) > 1e-4)) {
+  while ((iter <= 30) & ((lamb2 - lamb1) > 1e-5)) {
     iter = iter + 1
     w_tmp = soft_threshold(coefs, (lamb1 + lamb2) / 2)
     w = normalization(w_tmp)
