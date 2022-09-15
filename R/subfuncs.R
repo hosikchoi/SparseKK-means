@@ -232,7 +232,6 @@ combine_kernel = function(anovaKernel,
 #   return(K1 - K2 - K3 + K4)
 # }
 
-# weights 반영한 코드로 변경해야함
 GetWCD = function(anovaKernel, theta, clusters, weights)
 {
   uc = unique(clusters)
@@ -244,6 +243,7 @@ GetWCD = function(anovaKernel, theta, clusters, weights)
       ind = clusters == uc[g]
       swt = weights[ind]
       subK = K[ind, ind]
+      # wcd[v] = wcd[v] + sum(diag(subK)) - (1 / sum(swt)) * sum((subK * tcrossprod(swt)))
       wcd[v] = wcd[v] + sum(swt * diag(subK)) - (1 / sum(swt)) * sum((subK * tcrossprod(swt)))
     }
   }
@@ -329,7 +329,7 @@ normalization = function(x) {
 # the function from sparcl package
 BinarySearch = function(coefs, s) 
 {
-  if(sum(coefs^2) == 0 || sum(abs(normalization(coefs))) <= s) return(0)
+  if((sum(coefs^2) == 0) | (sum(abs(normalization(coefs))) <= s)) return(0)
   lamb1 = 0
   lamb2 = max(abs(coefs)) - 1e-5
   iter = 0
